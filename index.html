@@ -186,6 +186,15 @@
   @keyframes flashNewDark{0%,60%{background:#1e3a1a;}100%{background:transparent;}}
   body.dark .hi2.new-entry{animation:flashNewDark 1.8s ease forwards;}
   body.dark .rarity-most-row td{background:#1c2333!important;color:var(--text)!important;}
+  /* History Pagination */
+  .hpager{display:flex;gap:5px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border);align-items:center;}
+  .hpbtn{padding:4px 11px;border-radius:7px;font-size:12px;font-weight:700;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s;}
+  .hpbtn:hover{border-color:var(--blue);color:var(--blue);}
+  .hpbtn.hpact{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .hpinfo{font-size:12px;color:var(--muted);margin-left:auto;}
+  body.dark .hpbtn{background:#1c2333;color:var(--muted);border-color:var(--border);}
+  body.dark .hpbtn:hover{border-color:#60a5fa;color:#60a5fa;}
+  body.dark .hpbtn.hpact{background:#60a5fa;color:#0d1117;border-color:#60a5fa;}
 </style>
 </head>
 <body>
@@ -234,6 +243,7 @@
       <thead><tr><th>#</th><th>ชื่อ Item</th><th>Rarity</th><th>Action</th></tr></thead>
       <tbody id="iBody"></tbody>
     </table>
+    <div id="iPager" class="hpager hidden"></div>
     <div class="ep hidden" id="iEmpty">ยังไม่มี Item — กรอกชื่อและ Rarity แล้วกด + Add Item</div>
     <div id="editRow" class="hidden" style="margin-top:12px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;">
       <div class="fr">
@@ -354,7 +364,8 @@
   </div>
   <div id="hBody" style="padding:0;">
     <div id="hList"><div class="ep">ยังไม่มีประวัติ — รัน Simulation แล้วจะแสดงที่นี่</div></div>
-    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+    <div id="hPager" class="hpager hidden"></div>
+    <div style="padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
       <button class="btn bd bsm" onclick="clrHist()">🗑 ล้างประวัติ</button>
     </div>
   </div>
@@ -362,7 +373,7 @@
 
 </div><!-- /.wrap -->
 <script>
-var items=[],iId=0,editId=null,lastPull=[],lastPOV=null,hist=[],MAX_H=50,lastSimRates=null,lastSimPrice=0;
+var items=[],iId=0,editId=null,lastPull=[],lastPOV=null,hist=[],MAX_H=50,lastSimRates=null,lastSimPrice=0,histPage=0,HIST_PER_PAGE=10,itemPage=0,ITEMS_PER_PAGE=5;
 
 /* RATES */
 function gR(){return{SSR:+document.getElementById('rSSR').value||0,SR:+document.getElementById('rSR').value||0,R:+document.getElementById('rR').value||0,N:+document.getElementById('rN').value||0};}
@@ -383,7 +394,7 @@ function valR(){
 function addItem(){
   var el=document.getElementById('iName'),name=el.value.trim(),rar=document.getElementById('iRarity').value;
   if(!name){showAl('itemAlert','กรุณากรอกชื่อ Item','ae');return;}
-  items.push({id:++iId,name:name,rarity:rar});el.value='';clrAl('itemAlert');renItems();
+  items.push({id:++iId,name:name,rarity:rar});el.value='';clrAl('itemAlert');itemPage=Math.floor((items.length-1)/ITEMS_PER_PAGE);renItems();
 }
 function delItem(id){items=items.filter(function(i){return i.id!==id;});renItems();}
 function stEdit(id){
@@ -399,11 +410,35 @@ function saveEdit(){
 }
 function cancelEdit(){editId=null;document.getElementById('editRow').classList.add('hidden');}
 function renItems(){
-  var tb=document.getElementById('iBody'),em=document.getElementById('iEmpty'),tbl=document.getElementById('iTable');
-  if(!items.length){tbl.classList.add('hidden');em.classList.remove('hidden');return;}
+  var tb=document.getElementById('iBody'),em=document.getElementById('iEmpty'),tbl=document.getElementById('iTable'),pager=document.getElementById('iPager');
+  if(!items.length){tbl.classList.add('hidden');em.classList.remove('hidden');if(pager)pager.classList.add('hidden');return;}
   tbl.classList.remove('hidden');em.classList.add('hidden');
-  tb.innerHTML=items.map(function(it,i){return '<tr><td style="color:var(--muted);">'+(i+1)+'</td><td>'+esc(it.name)+'</td><td><span class="tag t-'+it.rarity.toLowerCase()+'">'+it.rarity+'</span></td><td><button class="btn bo bsm" onclick="stEdit('+it.id+')">✏️ แก้ไข</button> <button class="btn bd bsm" onclick="delItem('+it.id+')">✕ ลบ</button></td></tr>';}).join('');
+  /* pagination */
+  var totalPages=Math.ceil(items.length/ITEMS_PER_PAGE);
+  if(itemPage>=totalPages)itemPage=Math.max(0,totalPages-1);
+  var start=itemPage*ITEMS_PER_PAGE,end=Math.min(start+ITEMS_PER_PAGE,items.length);
+  tb.innerHTML=items.slice(start,end).map(function(it,pi){
+    var i=start+pi;
+    return '<tr><td style="color:var(--muted);">'+(i+1)+'</td><td>'+esc(it.name)+'</td>'+
+      '<td><span class="tag t-'+it.rarity.toLowerCase()+'">'+it.rarity+'</span></td>'+
+      '<td><button class="btn bo bsm" onclick="stEdit('+it.id+')">✏️ แก้ไข</button> '+
+      '<button class="btn bd bsm" onclick="delItem('+it.id+')">✕ ลบ</button></td></tr>';
+  }).join('');
+  if(pager){
+    if(totalPages<=1){pager.classList.add('hidden');}
+    else{
+      pager.classList.remove('hidden');
+      var btns='';
+      for(var p=0;p<totalPages;p++){
+        var active=p===itemPage?' hpact':'';
+        btns+='<button class="hpbtn'+active+'" onclick="goItemPage('+p+')">'+(p+1)+'</button>';
+      }
+      btns+='<span class="hpinfo">แสดง '+(start+1)+'-'+end+' จาก '+items.length+' item</span>';
+      pager.innerHTML=btns;
+    }
+  }
 }
+function goItemPage(p){itemPage=p;renItems();}
 function valPool(){
   var r=gR(),e=[];
   ['SSR','SR','R','N'].forEach(function(rar){if(r[rar]>0&&!items.some(function(i){return i.rarity===rar;}))e.push(rar+' มี rate '+r[rar]+'% แต่ไม่มี Item ใน pool');});
@@ -719,13 +754,20 @@ function pushHistMC(d){
   if(hist.length>MAX_H)hist.pop();renHist(true);
 }
 function renHist(highlightFirst){
-  var el=document.getElementById('hList'),badge=document.getElementById('histCount');
+  var el=document.getElementById('hList'),badge=document.getElementById('histCount'),pager=document.getElementById('hPager');
   if(!hist.length){
     el.innerHTML='<div class="ep">ยังไม่มีประวัติ</div>';
     if(badge){badge.classList.add('hidden');badge.textContent='0';}
+    if(pager)pager.classList.add('hidden');
     return;
   }
-  el.innerHTML=hist.map(function(h,i){
+  /* คำนวณหน้า */
+  var totalPages=Math.ceil(hist.length/HIST_PER_PAGE);
+  if(histPage>=totalPages)histPage=0;
+  var start=histPage*HIST_PER_PAGE,end=Math.min(start+HIST_PER_PAGE,hist.length);
+  var pageItems=hist.slice(start,end);
+  el.innerHTML=pageItems.map(function(h,pi){
+    var i=start+pi;
     var cls='hi2'+(i===0&&highlightFirst?' new-entry':'');
     var num='<strong>#'+(hist.length-i)+'</strong>';
     var row='';
@@ -749,9 +791,24 @@ function renHist(highlightFirst){
     return '<div class="'+cls+'"><div>'+row+'</div>'+
       '<span style="color:var(--muted);font-size:12px;flex-shrink:0;margin-left:8px;">'+h.time+'</span></div>';
   }).join('');
+  /* Pagination */
+  if(pager){
+    if(totalPages<=1){pager.classList.add('hidden');}
+    else{
+      pager.classList.remove('hidden');
+      var btns='';
+      for(var p=0;p<totalPages;p++){
+        var active=p===histPage?' hpact':'';
+        btns+='<button class="hpbtn'+active+'" onclick="goHistPage('+p+')">'+(p+1)+'</button>';
+      }
+      btns+='<span class="hpinfo">แสดง '+(start+1)+'-'+end+' จาก '+hist.length+' รายการ</span>';
+      pager.innerHTML=btns;
+    }
+  }
   if(badge){badge.classList.remove('hidden');badge.textContent=hist.length;}
 }
-function clrHist(){if(!hist.length)return;if(!confirm('ล้างประวัติทั้งหมด?'))return;hist=[];renHist(false);}
+function goHistPage(p){histPage=p;renHist(false);}
+function clrHist(){if(!hist.length)return;if(!confirm('ล้างประวัติทั้งหมด?'))return;hist=[];histPage=0;renHist(false);}
 var hOpen=true;
 function togHist(){hOpen=!hOpen;document.getElementById('hBody').style.display=hOpen?'':'none';
 document.getElementById('hIcon').textContent=hOpen?'▲':'▼';}
