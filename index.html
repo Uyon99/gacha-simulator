@@ -654,7 +654,7 @@ function expPull(){
   rows.push(['[ ROLL DETAILS ]','','','','','']);
   rows.push(['Roll No.','Rarity','ชื่อ Item','ค่าใช้จ่าย (บาท)','','']);
   lastPull.forEach(function(r){rows.push([r.roll,r.rarity,r.item,r.cost,'','']);});
-  dlCSV(rows,'gacha_pull_result.csv');
+  dlCSV(rows,'gacha_pull_result_'+tsNow()+'.csv');
 }
 function expPOV(){
   if(!lastPOV){alert('ยังไม่มีผลลัพธ์ Player POV — กรุณารัน Monte Carlo ก่อน');return;}
@@ -710,7 +710,12 @@ function expPOV(){
     cumRows2.forEach(function(cr){rows.push(cr);});
   }
   rows.push(['','','','','']);
-  dlCSV(rows,'gacha_player_pov_summary.csv');
+  dlCSV(rows,'gacha_pov_'+tsNow()+'.csv');
+}
+function tsNow(){
+  var d=new Date();
+  var pad=function(n){return n<10?'0'+n:n;};
+  return d.getFullYear()+''+pad(d.getMonth()+1)+''+pad(d.getDate())+'_'+pad(d.getHours())+''+pad(d.getMinutes())+''+pad(d.getSeconds());
 }
 function dlCSV(rows,fn){
   /* Smart quoting: numbers stay as numbers, strings quoted only when needed.
